@@ -43,6 +43,7 @@ function EditSopDrawerContent({
 
       <Box sx={{ flexGrow: 1, p: 2, overflow: 'hidden', display: 'flex' }}>
         <TextField
+          label="SOP Markdown"
           value={value}
           onChange={(event) => setValue(event.target.value)}
           multiline
@@ -86,7 +87,7 @@ export default function EditSopDrawer({ open, content, onCancel, onSave }: EditS
     <Drawer anchor="right" open={open} onClose={onCancel}>
       {/* Remounted each time the drawer opens so its local edit state always starts
           from the latest content, without setState-in-effect. */}
-      {open && <EditSopDrawerContent key={content} content={content} onCancel={onCancel} onSave={onSave} />}
+      {open && <EditSopDrawerContent key="editor" content={content} onCancel={onCancel} onSave={onSave} />}
     </Drawer>
   );
 }
