@@ -1,0 +1,28 @@
+[project]
+name = "sop-host"
+version = "0.1.0"
+description = "Thin FastAPI host that runs the sop_pipeline library and streams its output."
+requires-python = "==3.12.*"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "sop-pipeline",
+    # sop_generator declares only `openai>=1.50.0`, but its own uv.lock pins 2.43.0 and
+    # that is the only major it has been run against. A clean resolve here picks up 3.x.
+    # We can't touch that repo, so constrain it from our side.
+    "openai>=2.43.0,<3",
+]
+
+[tool.uv.sources]
+# The pipeline resolves prompts/ relative to its repo root (prompts.py:13 ->
+# parents[2] / "prompts"), which hatchling does not put in the wheel. It must be
+# installed editable so the repo tree stays on disk.
+sop-pipeline = { path = "../../sop_generator", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
