@@ -41,7 +41,7 @@ function computeProgress(steps: Step[]): number {
   const done = steps.filter((step) => step.status === 'done').length;
   const running = steps.find((step) => step.status === 'running');
   const partial = running ? Math.min(running.subSteps.length * 2, perStep * 0.6) : 0;
-  return Math.round(done * perStep + partial);
+  return Math.min(100, Math.round(done * perStep + partial));
 }
 
 type UseSopGeneration = {

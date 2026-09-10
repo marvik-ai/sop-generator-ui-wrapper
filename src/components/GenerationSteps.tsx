@@ -24,6 +24,15 @@ function StepRow({ step }: { step: Step }) {
     >
       <Box
         onClick={() => step.subSteps.length > 0 && setExpanded((previous) => !previous)}
+        onKeyDown={(event) => {
+          if (step.subSteps.length === 0) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setExpanded((previous) => !previous);
+          }
+        }}
+        role={step.subSteps.length > 0 ? 'button' : undefined}
+        tabIndex={step.subSteps.length > 0 ? 0 : undefined}
         sx={{
           display: 'flex',
           alignItems: 'center',
