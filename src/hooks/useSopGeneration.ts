@@ -1,13 +1,50 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { LogLine, PickedFile, Sop, SopStatus } from '../types';
+import type { LogLine, PickedFile, Sop, SopStatus, Step } from '../types';
+
+const STAGE_COUNT = 4;
 
 type LogEvent = { line: string };
 type StatusEvent = { status: SopStatus; error: string | null };
 type ProgressEvent = { stage_index: number; stage_count: number; label: string | null };
 
+function emptySteps(): Step[] {
+  return Array.from({ length: STAGE_COUNT }, (_, index) => ({
+    index,
+    title: '',
+    status: 'pending',
+    subSteps: [],
+  }));
+}
+
+// One raw log line becomes one sub-step of the currently running step. The pipeline
+// marks a resolved line with a trailing checkmark; lines with neither a checkmark nor
+// a WARNING prefix are transient progress chatter and are not promoted to sub-steps.
+function subStepFromLine(line: string): { text: string; status: 'done' | 'warning' } | null {
+  const trimmed = line.trim();
+  if (trimmed.startsWith('WARNING:')) {
+    return { text: trimmed, status: 'warning' };
+  }
+  if (trimmed.endsWith('✅')) {
+    return { text: trimmed.slice(0, -1).trim(), status: 'done' };
+  }
+  return null;
+}
+
+// Completed steps count fully; the running step contributes partial credit from the
+// sub-steps seen so far, capped well short of a full step's share so the jump to
+// "done" (on the next step's header) stays visible.
+function computeProgress(steps: Step[]): number {
+  const perStep = 100 / STAGE_COUNT;
+  const done = steps.filter((step) => step.status === 'done').length;
+  const running = steps.find((step) => step.status === 'running');
+  const partial = running ? Math.min(running.subSteps.length * 2, perStep * 0.6) : 0;
+  return Math.round(done * perStep + partial);
+}
+
 type UseSopGeneration = {
   sop: Sop | null;
   lines: LogLine[];
+  steps: Step[];
   progress: number | null;
   startGeneration: (
     name: string,
@@ -22,6 +59,7 @@ type UseSopGeneration = {
 export default function useSopGeneration(): UseSopGeneration {
   const [sop, setSop] = useState<Sop | null>(null);
   const [lines, setLines] = useState<LogLine[]>([]);
+  const [steps, setSteps] = useState<Step[]>(emptySteps());
   // null means indeterminate: the stage mapping (owned by the backend, which is the
   // one place that imports the pipeline) never advanced, or the stream dropped mid-run.
   const [progress, setProgress] = useState<number | null>(0);
@@ -48,14 +86,37 @@ export default function useSopGeneration(): UseSopGeneration {
         // is not safe: two events can land before React flushes, and both updaters then
         // read the same (already-advanced) value, producing duplicate keys.
         setLines((previous) => [...previous, { id: previous.length + 1, text: line }]);
+
+        const subStep = subStepFromLine(line);
+        if (subStep) {
+          setSteps((previous) => {
+            const runningIndex = previous.findIndex((step) => step.status === 'running');
+            if (runningIndex === -1) return previous;
+            const running = previous[runningIndex];
+            const nextSteps = previous.slice();
+            nextSteps[runningIndex] = {
+              ...running,
+              subSteps: [...running.subSteps, { ...subStep, id: running.subSteps.length + 1 }],
+            };
+            setProgress((current) => (current === null ? current : computeProgress(nextSteps)));
+            return nextSteps;
+          });
+        }
       });
 
       source.addEventListener('progress', (event) => {
-        const { stage_index, stage_count } = JSON.parse(
-          (event as MessageEvent).data,
-        ) as ProgressEvent;
-        const value = Math.round(((stage_index + 1) / stage_count) * 100);
-        setProgress((previous) => (previous === null ? previous : Math.max(previous, value)));
+        const { stage_index, label } = JSON.parse((event as MessageEvent).data) as ProgressEvent;
+        setSteps((previous) => {
+          const nextSteps = previous.map((step) => {
+            if (step.index < stage_index) return { ...step, status: 'done' as const };
+            if (step.index === stage_index) {
+              return { ...step, title: label ?? step.title, status: 'running' as const };
+            }
+            return step;
+          });
+          setProgress((current) => (current === null ? current : computeProgress(nextSteps)));
+          return nextSteps;
+        });
       });
 
       source.addEventListener('status', (event) => {
@@ -69,6 +130,7 @@ export default function useSopGeneration(): UseSopGeneration {
           // `progress_drift`) — a completed run showing a stalled percentage is more
           // confusing than 100% plus the WARNING log line the backend already emits.
           setProgress(100);
+          setSteps((previous) => previous.map((step) => ({ ...step, status: 'done' as const })));
           void fetch(`/api/runs/${jobId}`)
             .then((response) => (response.ok ? response.json() : null))
             .then((snapshot) => {
@@ -112,6 +174,7 @@ export default function useSopGeneration(): UseSopGeneration {
     ) => {
       closeStream();
       setLines([]);
+      setSteps(emptySteps());
       setProgress(0);
       // Switch to the generating view immediately — don't wait on the POST round-trip
       // (upload + disk staging on the backend) before giving feedback that the click
@@ -183,8 +246,9 @@ export default function useSopGeneration(): UseSopGeneration {
     }
     setSop(null);
     setLines([]);
+    setSteps(emptySteps());
     setProgress(0);
   }, [closeStream]);
 
-  return { sop, lines, progress, startGeneration, updateContent, reset };
+  return { sop, lines, steps, progress, startGeneration, updateContent, reset };
 }

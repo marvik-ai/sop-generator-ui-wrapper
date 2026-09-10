@@ -13,6 +13,7 @@ streams. If concurrency is ever needed, run each job in a multiprocessing child.
 from __future__ import annotations
 
 import asyncio
+import re
 import shutil
 import traceback
 import uuid
@@ -28,23 +29,42 @@ from .models import JobStatus
 # Sentinel pushed onto a subscriber queue when the job reaches a terminal state.
 _DONE = object()
 
-# Ordered prefixes of the pipeline's own stage lines (sop_pipeline/pipeline.py:1014-1106).
-# Kept here, in the one module that already imports sop_pipeline, rather than in the
-# frontend: if the pipeline's wording ever drifts, the coupling lives in a single place
-# and the drift itself becomes observable (see `progress_drift` below) instead of the UI
-# silently stalling.
-STAGE_MARKERS = [
-    'Loaded ',
-    'Extracting statements',
-    'Reconciling',
-    'Synthesizing SOP',
-    'Auditing',
-    'Revising',
-    'Generating flow diagram',
-    'Deriving',
-    'Assembling',
-    'Done ->',
-]
+# The pipeline marks each top-level stage with a "========SECTION NAME========" header
+# line on stdout. Kept here, in the one module that already imports sop_pipeline, rather
+# than in the frontend: if the pipeline's wording ever drifts, the coupling lives in a
+# single place and the drift itself becomes observable (see `progress_drift` below)
+# instead of the UI silently stalling.
+_STAGE_HEADER_RE = re.compile(r'^={3,}\s*(.+?)\s*={3,}$')
+
+# The pipeline also renders its own animated, carriage-return-style progress bars using
+# ANSI CSI codes (e.g. "\x1b[K" to erase the line) and lines like "[████░░░░] 40%". Each
+# frame arrives as its own captured line (see `_LineWriter`), so these are stripped/
+# dropped here rather than treated as sub-step or stage-header content.
+_ANSI_CSI_RE = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+_PROGRESS_BAR_RE = re.compile(r'^\[[█░]+\]\s*\d+%$')
+
+STAGE_COUNT = 4
+
+
+def _clean_line(line: str) -> str:
+    return _ANSI_CSI_RE.sub('', line)
+
+
+def _is_progress_bar_line(line: str) -> bool:
+    return bool(_PROGRESS_BAR_RE.match(line.strip()))
+
+
+_ACRONYMS = {'SOP'}
+
+
+def _title_case(name: str) -> str:
+    return ' '.join(word if word in _ACRONYMS else word.capitalize() for word in name.split())
+
+
+def _match_stage_header(line: str) -> str | None:
+    """Return the title-cased stage name if `line` is a "===NAME===" header, else None."""
+    match = _STAGE_HEADER_RE.match(line.strip())
+    return _title_case(match.group(1)) if match else None
 
 
 class _LineWriter:
@@ -85,6 +105,7 @@ class Job:
     sop_markdown: str | None = None
     gaps_markdown: str | None = None
     stage_index: int = -1
+    stage_labels: list[str] = field(default_factory=list)
     progress_drift: bool = False
     # An existing SOP to revise (the frontend's "Current SOP" upload), staged outside
     # inputs/ by main.py. None means generate from scratch.
@@ -111,8 +132,8 @@ def is_busy() -> bool:
 def _progress_payload(job: Job) -> dict:
     return {
         'stage_index': job.stage_index,
-        'stage_count': len(STAGE_MARKERS),
-        'label': STAGE_MARKERS[job.stage_index] if job.stage_index >= 0 else None,
+        'stage_count': STAGE_COUNT,
+        'label': job.stage_labels[job.stage_index] if job.stage_index >= 0 else None,
     }
 
 
@@ -170,18 +191,19 @@ async def run(job: Job) -> None:
 
     loop = asyncio.get_running_loop()
 
-    def emit(line: str) -> None:
+    def emit(raw_line: str) -> None:
         # Called from the worker thread; hop back to the loop before touching
         # asyncio queues.
         def deliver() -> None:
+            line = _clean_line(raw_line)
+            if _is_progress_bar_line(line):
+                return
             job.lines.append(line)
             _publish(job, 'log', line)
-            stage = next(
-                (i for i, marker in enumerate(STAGE_MARKERS) if line.startswith(marker)),
-                None,
-            )
-            if stage is not None and stage > job.stage_index:
-                job.stage_index = stage
+            label = _match_stage_header(line)
+            if label is not None:
+                job.stage_labels.append(label)
+                job.stage_index = len(job.stage_labels) - 1
                 _publish(job, 'progress', _progress_payload(job))
 
         loop.call_soon_threadsafe(deliver)
@@ -206,10 +228,10 @@ async def run(job: Job) -> None:
             gaps = job.dir / 'out' / 'gaps_report.md'
             if gaps.is_file():
                 job.gaps_markdown = gaps.read_text(encoding='utf-8')
-            if job.stage_index < len(STAGE_MARKERS) - 1:
+            if job.stage_index < STAGE_COUNT - 1:
                 job.progress_drift = True
                 job.lines.append(
-                    f'WARNING: completed at stage {job.stage_index + 1}/{len(STAGE_MARKERS)}; '
+                    f'WARNING: completed at stage {job.stage_index + 1}/{STAGE_COUNT}; '
                     'pipeline wording likely changed'
                 )
                 _publish(job, 'log', job.lines[-1])
