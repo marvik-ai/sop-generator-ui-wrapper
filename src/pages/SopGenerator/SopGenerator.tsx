@@ -18,7 +18,6 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import LogConsole from '../../components/LogConsole';
 import GenerationSteps from '../../components/GenerationSteps';
 import StatusChip from '../../components/StatusChip';
 import useSopGeneration from '../../hooks/useSopGeneration';
@@ -40,8 +39,7 @@ function downloadMarkdown(name: string, content: string) {
 
 export default function SopGenerator() {
   const [tab, setTab] = useState(0);
-  const { sop, lines, steps, progress, startGeneration, updateContent, reset } =
-    useSopGeneration();
+  const { sop, steps, progress, startGeneration, updateContent, reset } = useSopGeneration();
   const [name, setName] = useState('');
   const [files, setFiles] = useState<PickedFile[]>([]);
   const [currentSop, setCurrentSop] = useState<PickedFile | null>(null);
@@ -271,7 +269,6 @@ export default function SopGenerator() {
                 </Typography>
               </Box>
               <GenerationSteps steps={steps} />
-              <LogConsole lines={lines} isRunning={sop.status === 'generating'} />
             </Box>
           ) : (
             sop.content ? (

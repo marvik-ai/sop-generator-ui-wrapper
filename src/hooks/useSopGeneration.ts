@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { LogLine, PickedFile, Sop, SopStatus, Step } from '../types';
+import type { PickedFile, Sop, SopStatus, Step } from '../types';
 
 const STAGE_COUNT = 4;
 
@@ -32,7 +32,10 @@ function subStepFromLine(line: string): { text: string; status: 'done' | 'warnin
 
 // Completed steps count fully; the running step contributes partial credit from the
 // sub-steps seen so far, capped well short of a full step's share so the jump to
-// "done" (on the next step's header) stays visible.
+// "done" (on the next step's header) stays visible. Derived rather than stored: a
+// separate `progress` state written from two places (log/progress events and the
+// "force 100" on ready) can commit out of order and get stuck; deriving it from
+// `steps` on every render means there's exactly one source of truth.
 function computeProgress(steps: Step[]): number {
   const perStep = 100 / STAGE_COUNT;
   const done = steps.filter((step) => step.status === 'done').length;
@@ -43,7 +46,6 @@ function computeProgress(steps: Step[]): number {
 
 type UseSopGeneration = {
   sop: Sop | null;
-  lines: LogLine[];
   steps: Step[];
   progress: number | null;
   startGeneration: (
@@ -58,11 +60,11 @@ type UseSopGeneration = {
 
 export default function useSopGeneration(): UseSopGeneration {
   const [sop, setSop] = useState<Sop | null>(null);
-  const [lines, setLines] = useState<LogLine[]>([]);
   const [steps, setSteps] = useState<Step[]>(emptySteps());
-  // null means indeterminate: the stage mapping (owned by the backend, which is the
-  // one place that imports the pipeline) never advanced, or the stream dropped mid-run.
-  const [progress, setProgress] = useState<number | null>(0);
+  // null means indeterminate: the run failed, or the connection dropped mid-run, so the
+  // last-seen stage mapping is no longer trustworthy.
+  const [progressFailed, setProgressFailed] = useState(false);
+  const progress = progressFailed ? null : computeProgress(steps);
   const sourceRef = useRef<EventSource | null>(null);
   // Mirrors sop.id so reset() can fire its DELETE without a side effect inside a
   // setState updater (StrictMode invokes updaters twice).
@@ -82,11 +84,6 @@ export default function useSopGeneration(): UseSopGeneration {
 
       source.addEventListener('log', (event) => {
         const { line } = JSON.parse((event as MessageEvent).data) as LogEvent;
-        // Derive the id from the list itself. Reading a counter ref inside the updater
-        // is not safe: two events can land before React flushes, and both updaters then
-        // read the same (already-advanced) value, producing duplicate keys.
-        setLines((previous) => [...previous, { id: previous.length + 1, text: line }]);
-
         const subStep = subStepFromLine(line);
         if (subStep) {
           setSteps((previous) => {
@@ -98,7 +95,6 @@ export default function useSopGeneration(): UseSopGeneration {
               ...running,
               subSteps: [...running.subSteps, { ...subStep, id: running.subSteps.length + 1 }],
             };
-            setProgress((current) => (current === null ? current : computeProgress(nextSteps)));
             return nextSteps;
           });
         }
@@ -106,17 +102,15 @@ export default function useSopGeneration(): UseSopGeneration {
 
       source.addEventListener('progress', (event) => {
         const { stage_index, label } = JSON.parse((event as MessageEvent).data) as ProgressEvent;
-        setSteps((previous) => {
-          const nextSteps = previous.map((step) => {
+        setSteps((previous) =>
+          previous.map((step) => {
             if (step.index < stage_index) return { ...step, status: 'done' as const };
             if (step.index === stage_index) {
               return { ...step, title: label ?? step.title, status: 'running' as const };
             }
             return step;
-          });
-          setProgress((current) => (current === null ? current : computeProgress(nextSteps)));
-          return nextSteps;
-        });
+          }),
+        );
       });
 
       source.addEventListener('status', (event) => {
@@ -126,10 +120,9 @@ export default function useSopGeneration(): UseSopGeneration {
           current ? { ...current, status, error: error ?? undefined } : current,
         );
         if (status === 'ready') {
-          // Force 100 even if the stage mapping drifted mid-run (see backend
-          // `progress_drift`) — a completed run showing a stalled percentage is more
-          // confusing than 100% plus the WARNING log line the backend already emits.
-          setProgress(100);
+          // Force every step done even if the stage mapping drifted mid-run (see
+          // backend `progress_drift`) — a completed run showing a stalled percentage
+          // is more confusing than 100% plus the WARNING log line the backend emits.
           setSteps((previous) => previous.map((step) => ({ ...step, status: 'done' as const })));
           void fetch(`/api/runs/${jobId}`)
             .then((response) => (response.ok ? response.json() : null))
@@ -147,7 +140,7 @@ export default function useSopGeneration(): UseSopGeneration {
             });
         } else if (status === 'failed') {
           // A failed run's last matched stage is no longer trustworthy progress info.
-          setProgress(null);
+          setProgressFailed(true);
         }
       });
 
@@ -158,7 +151,7 @@ export default function useSopGeneration(): UseSopGeneration {
           if (!current || current.status !== 'generating') return current;
           return { ...current, status: 'failed', error: 'Lost connection to the server.' };
         });
-        setProgress(null);
+        setProgressFailed(true);
         closeStream();
       };
     },
@@ -173,9 +166,8 @@ export default function useSopGeneration(): UseSopGeneration {
       currentSop?: PickedFile,
     ) => {
       closeStream();
-      setLines([]);
       setSteps(emptySteps());
-      setProgress(0);
+      setProgressFailed(false);
       // Switch to the generating view immediately — don't wait on the POST round-trip
       // (upload + disk staging on the backend) before giving feedback that the click
       // registered. The real job id is patched in once the response arrives.
@@ -245,10 +237,9 @@ export default function useSopGeneration(): UseSopGeneration {
       jobIdRef.current = null;
     }
     setSop(null);
-    setLines([]);
     setSteps(emptySteps());
-    setProgress(0);
+    setProgressFailed(false);
   }, [closeStream]);
 
-  return { sop, lines, steps, progress, startGeneration, updateContent, reset };
+  return { sop, steps, progress, startGeneration, updateContent, reset };
 }

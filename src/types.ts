@@ -1,10 +1,5 @@
 export type SopStatus = 'generating' | 'ready' | 'failed';
 
-export type LogLine = {
-  id: number;
-  text: string;
-};
-
 export type SubStepStatus = 'done' | 'warning';
 
 export type SubStep = {
