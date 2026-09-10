@@ -1,8 +1,20 @@
 export type SopStatus = 'generating' | 'ready' | 'failed';
 
-export type LogLine = {
+export type SubStepStatus = 'done' | 'warning';
+
+export type SubStep = {
   id: number;
   text: string;
+  status: SubStepStatus;
+};
+
+export type StepStatus = 'pending' | 'running' | 'done';
+
+export type Step = {
+  index: number;
+  title: string;
+  status: StepStatus;
+  subSteps: SubStep[];
 };
 
 // A file the user attached, plus the path it should land at under inputs/ — just its

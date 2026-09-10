@@ -53,7 +53,10 @@ function EditSopDrawerContent({
           sx={{
             flexGrow: 1,
             '& .MuiInputBase-root': { height: '100%', alignItems: 'flex-start' },
-            '& .MuiInputBase-input': { height: '100% !important', overflowY: 'auto' },
+            '& .MuiInputBase-input': {
+              height: '100% !important',
+              overflow: 'auto !important',
+            },
           }}
         />
       </Box>

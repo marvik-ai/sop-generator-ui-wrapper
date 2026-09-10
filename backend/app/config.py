@@ -44,9 +44,8 @@ SCHEMA_GUIDE_PATH = Path(
 
 RUNS_DIR = Path(os.environ.get('RUNS_DIR') or BACKEND_DIR / 'runs').resolve()
 
-# What the pipeline's ingest layer will actually read (ingest.py:20-21). Anything
-# else is silently dropped by the pipeline, so we reject it up front instead.
-ALLOWED_SUFFIXES = {'.docx', '.md', '.markdown', '.txt', '.mp4'}
+# What the pipeline's ingest layer will read (ingest.py:20-21).
+ALLOWED_SUFFIXES = {'.docx', '.md', '.markdown', '.txt', '.mp4', '.vtt'}
 
 
 def check() -> None:
