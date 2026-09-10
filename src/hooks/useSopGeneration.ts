@@ -15,6 +15,7 @@ type UseSopGeneration = {
     description?: string,
     currentSop?: PickedFile,
   ) => Promise<void>;
+  updateContent: (content: string) => void;
   reset: () => void;
 };
 
@@ -170,6 +171,10 @@ export default function useSopGeneration(): UseSopGeneration {
     [closeStream, subscribe],
   );
 
+  const updateContent = useCallback((content: string) => {
+    setSop((current) => (current ? { ...current, content } : current));
+  }, []);
+
   const reset = useCallback(() => {
     closeStream();
     if (jobIdRef.current) {
@@ -181,5 +186,5 @@ export default function useSopGeneration(): UseSopGeneration {
     setProgress(0);
   }, [closeStream]);
 
-  return { sop, lines, progress, startGeneration, reset };
+  return { sop, lines, progress, startGeneration, updateContent, reset };
 }
