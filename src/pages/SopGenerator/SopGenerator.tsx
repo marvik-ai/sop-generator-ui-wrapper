@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ReactMarkdown from 'react-markdown';
@@ -25,6 +26,7 @@ import FilePickerButton from '../../components/FilePickerButton';
 import type { PickedFile } from '../../types';
 import { collectFromDataTransfer } from '../../utils/fileCollection';
 import { mdComponents } from './MarkdownRenderers';
+import EditSopDrawer from './EditSopDrawer';
 
 function downloadMarkdown(name: string, content: string) {
   const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown' }));
@@ -37,12 +39,13 @@ function downloadMarkdown(name: string, content: string) {
 
 export default function SopGenerator() {
   const [tab, setTab] = useState(0);
-  const { sop, lines, progress, startGeneration, reset } = useSopGeneration();
+  const { sop, lines, progress, startGeneration, updateContent, reset } = useSopGeneration();
   const [name, setName] = useState('');
   const [files, setFiles] = useState<PickedFile[]>([]);
   const [currentSop, setCurrentSop] = useState<PickedFile | null>(null);
   const [description, setDescription] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const canGenerate = name.trim().length > 0 && files.length > 0;
 
   const clearAll = () => {
@@ -209,6 +212,14 @@ export default function SopGenerator() {
             <StatusChip status={sop.status} />
             <Box sx={{ flexGrow: 1 }} />
             <IconButton
+              aria-label="Edit SOP"
+              disabled={!isReady || !sop.content}
+              onClick={() => setIsEditing(true)}
+              sx={{ border: 1, borderColor: 'divider', borderRadius: 1, color: 'info.main' }}
+            >
+              <EditOutlinedIcon fontSize="small" />
+            </IconButton>
+            <IconButton
               aria-label="Download SOP"
               disabled={!isReady || !sop.content}
               onClick={() => sop.content && downloadMarkdown(sop.name, sop.content)}
@@ -299,6 +310,15 @@ export default function SopGenerator() {
         </Box>
       )}
 
+      <EditSopDrawer
+        open={isEditing}
+        content={sop?.content ?? ''}
+        onCancel={() => setIsEditing(false)}
+        onSave={(content) => {
+          updateContent(content);
+          setIsEditing(false);
+        }}
+      />
     </>
   );
 }
