@@ -89,7 +89,7 @@ async def create_run(
             )
         staged_draft = (draft_rel_path, await draft.read())
 
-    job = jobs.create(name.strip())
+    job = jobs.create(name.strip(), description.strip())
     for rel_path, content in staged:
         destination = job.dir / 'inputs' / rel_path
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -101,12 +101,6 @@ async def create_run(
         draft_destination.parent.mkdir(parents=True, exist_ok=True)
         draft_destination.write_bytes(draft_content)
         job.draft_path = draft_destination
-
-    if description.strip():
-        (job.dir / 'inputs' / 'instructions.md').write_text(
-            f'# Additional context provided by the requester\n\n{description.strip()}\n',
-            encoding='utf-8',
-        )
 
     background.add_task(jobs.run, job)
     return RunAccepted(job_id=job.id)

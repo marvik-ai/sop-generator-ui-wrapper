@@ -6,6 +6,7 @@ import {
   Button,
   IconButton,
   LinearProgress,
+  MenuItem,
   Menu,
   Paper,
   Tab,
@@ -31,6 +32,7 @@ import type { PickedFile } from '../../types';
 import { collectFromDataTransfer } from '../../utils/fileCollection';
 import { mdComponents } from './MarkdownRenderers';
 import EditSopDrawer from './EditSopDrawer';
+import { TASK_TAXONOMY } from '../../data/taskTaxonomy';
 
 const rotateGradient = keyframes`
   from {
@@ -71,14 +73,51 @@ export default function SopGenerator() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [addMenuAnchor, setAddMenuAnchor] = useState<HTMLElement | null>(null);
+  const [phase, setPhase] = useState('');
+  const [category, setCategory] = useState('');
+  const [subCategory, setSubCategory] = useState('');
   const canGenerate = name.trim().length > 0 && files.length > 0;
   const closeAddMenu = () => setAddMenuAnchor(null);
+
+  const selectedPhase = TASK_TAXONOMY.find((p) => p.name === phase);
+  const selectedTask = selectedPhase?.tasks.find((t) => t.name === category);
 
   const clearAll = () => {
     setName('');
     setDescription('');
     setFiles([]);
     setCurrentSop(null);
+    setPhase('');
+    setCategory('');
+    setSubCategory('');
+  };
+
+  const handlePhaseChange = (value: string) => {
+    setPhase(value);
+    setCategory('');
+    setSubCategory('');
+    setName('');
+    setDescription('');
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCategory(value);
+    setSubCategory('');
+    const task = selectedPhase?.tasks.find((t) => t.name === value);
+    if (task && task.subTasks.length === 0) {
+      setName(task.name);
+      setDescription(task.description ?? '');
+    } else {
+      setName('');
+      setDescription('');
+    }
+  };
+
+  const handleSubCategoryChange = (value: string) => {
+    setSubCategory(value);
+    const subTask = selectedTask?.subTasks.find((s) => s.name === value);
+    setName(`${category} - ${value}`);
+    setDescription(subTask?.description ?? '');
   };
 
   const isReady = sop?.status === 'ready';
@@ -158,6 +197,67 @@ export default function SopGenerator() {
                 border: 'none',
               }}
             >
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              <TextField
+                variant="standard"
+                select
+                value={phase}
+                onChange={(event) => handlePhaseChange(event.target.value)}
+                label="Type"
+                sx={{ minWidth: 140, flex: 1 }}
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+              >
+                <MenuItem value="">
+                  <em>Select</em>
+                </MenuItem>
+                {TASK_TAXONOMY.map((p) => (
+                  <MenuItem key={p.name} value={p.name}>
+                    {p.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                variant="standard"
+                select
+                value={category}
+                onChange={(event) => handleCategoryChange(event.target.value)}
+                label="Category"
+                disabled={!selectedPhase}
+                sx={{ minWidth: 140, flex: 1 }}
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+              >
+                <MenuItem value="">
+                  <em>Select</em>
+                </MenuItem>
+                {selectedPhase?.tasks.map((t) => (
+                  <MenuItem key={t.name} value={t.name}>
+                    {t.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                variant="standard"
+                select
+                value={subCategory}
+                onChange={(event) => handleSubCategoryChange(event.target.value)}
+                label="Sub-Category"
+                disabled={!selectedTask || selectedTask.subTasks.length === 0}
+                sx={{ minWidth: 140, flex: 1 }}
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+              >
+                <MenuItem value="">
+                  <em>Select</em>
+                </MenuItem>
+                {selectedTask?.subTasks.map((s) => (
+                  <MenuItem key={s.name} value={s.name}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
             <TextField
               variant="standard"
               value={name}
@@ -255,6 +355,7 @@ export default function SopGenerator() {
                   onClose={closeAddMenu}
                   disableAutoFocus
                   disableRestoreFocus
+                  keepMounted
                   slotProps={{
                     list: {
                       onMouseLeave: closeAddMenu,

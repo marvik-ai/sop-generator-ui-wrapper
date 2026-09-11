@@ -3,7 +3,7 @@ import type { ChipProps } from '@mui/material';
 import type { SopStatus } from '../types';
 
 const STATUS_CONFIG: Record<SopStatus, { label: string; color: ChipProps['color'] }> = {
-  generating: { label: 'Generating', color: 'info' },
+  generating: { label: 'Generating...', color: 'info' },
   ready: { label: 'Ready', color: 'success' },
   failed: { label: 'Failed', color: 'error' },
 };
