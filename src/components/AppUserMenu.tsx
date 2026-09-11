@@ -1,8 +1,7 @@
 import { Avatar, Box, Typography } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-const USER_NAME = 'Jane Doe';
-const USER_INITIALS = 'JD';
+const USER_NAME = 'Marvik Team';
+const USER_INITIALS = 'MT';
 
 export default function AppUserMenu() {
   return (
@@ -15,7 +14,6 @@ export default function AppUserMenu() {
       <Typography variant="body2" sx={{ fontWeight: 700 }}>
         {USER_NAME}
       </Typography>
-      <ExpandMoreIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
     </Box>
   );
 }

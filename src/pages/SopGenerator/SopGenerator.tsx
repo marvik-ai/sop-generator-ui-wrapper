@@ -4,6 +4,11 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
   LinearProgress,
   MenuItem,
@@ -76,6 +81,7 @@ export default function SopGenerator() {
   const [phase, setPhase] = useState('');
   const [category, setCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const canGenerate = name.trim().length > 0 && files.length > 0;
   const closeAddMenu = () => setAddMenuAnchor(null);
 
@@ -447,7 +453,7 @@ export default function SopGenerator() {
             </IconButton>
             <IconButton
               aria-label="Delete SOP"
-              onClick={reset}
+              onClick={() => setConfirmDeleteOpen(true)}
               sx={{ border: 1, borderColor: 'divider', borderRadius: 1, color: 'error.main' }}
             >
               <DeleteOutlinedIcon fontSize="small" />
@@ -536,6 +542,29 @@ export default function SopGenerator() {
           )}
         </Box>
       )}
+
+      <Dialog open={confirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)}>
+        <DialogTitle>Delete SOP?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will permanently delete the current SOP and its generation progress. This action
+            cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDeleteOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              reset();
+              setConfirmDeleteOpen(false);
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <EditSopDrawer
         open={isEditing}
