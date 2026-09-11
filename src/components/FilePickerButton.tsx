@@ -43,7 +43,7 @@ export default function FilePickerButton({
           variant === 'tonal'
             ? { bgcolor: 'action.hover', color: 'text.primary', boxShadow: 'none' }
             : { borderColor: 'divider', color: 'text.primary' },
-          ...(Array.isArray(sx) ? sx : [sx]),
+          ...(sx ? (Array.isArray(sx) ? sx : [sx]) : []),
         ]}
       >
         {label}

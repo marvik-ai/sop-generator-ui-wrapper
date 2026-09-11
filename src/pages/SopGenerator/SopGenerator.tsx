@@ -321,7 +321,7 @@ export default function SopGenerator() {
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
               <Box onMouseLeave={closeAddMenu}>
                 <IconButton
-                  aria-label="Add files"
+                  aria-label={addMenuAnchor ? 'Close menu' : 'Add files'}
                   onMouseEnter={(event) => setAddMenuAnchor(event.currentTarget)}
                   onClick={(event) => setAddMenuAnchor(event.currentTarget)}
                   sx={{
