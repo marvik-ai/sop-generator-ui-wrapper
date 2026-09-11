@@ -43,12 +43,10 @@ function EditSopDrawerContent({
 
       <Box sx={{ flexGrow: 1, p: 2, overflow: 'hidden', display: 'flex' }}>
         <TextField
-          label="SOP Markdown"
           value={value}
           onChange={(event) => setValue(event.target.value)}
           multiline
           fullWidth
-          variant="outlined"
           slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.875rem' } } }}
           sx={{
             flexGrow: 1,
@@ -57,6 +55,7 @@ function EditSopDrawerContent({
               height: '100% !important',
               overflow: 'auto !important',
             },
+            '& .MuiOutlinedInput-notchedOutline': { border: 'none !important' },
           }}
         />
       </Box>

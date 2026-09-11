@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { keyframes } from '@emotion/react';
 import {
   Alert,
   Box,
   Button,
   IconButton,
   LinearProgress,
+  MenuItem,
+  Menu,
   Paper,
   Tab,
   Tabs,
@@ -16,6 +19,8 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import GenerationSteps from '../../components/GenerationSteps';
@@ -27,6 +32,27 @@ import type { PickedFile } from '../../types';
 import { collectFromDataTransfer } from '../../utils/fileCollection';
 import { mdComponents } from './MarkdownRenderers';
 import EditSopDrawer from './EditSopDrawer';
+import { TASK_TAXONOMY } from '../../data/taskTaxonomy';
+
+const rotateGradient = keyframes`
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+const twinkle = keyframes`
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) rotate(15deg);
+    opacity: 0.6;
+  }
+`;
 
 function downloadMarkdown(name: string, content: string) {
   const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown' }));
@@ -46,13 +72,52 @@ export default function SopGenerator() {
   const [description, setDescription] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [addMenuAnchor, setAddMenuAnchor] = useState<HTMLElement | null>(null);
+  const [phase, setPhase] = useState('');
+  const [category, setCategory] = useState('');
+  const [subCategory, setSubCategory] = useState('');
   const canGenerate = name.trim().length > 0 && files.length > 0;
+  const closeAddMenu = () => setAddMenuAnchor(null);
+
+  const selectedPhase = TASK_TAXONOMY.find((p) => p.name === phase);
+  const selectedTask = selectedPhase?.tasks.find((t) => t.name === category);
 
   const clearAll = () => {
     setName('');
     setDescription('');
     setFiles([]);
     setCurrentSop(null);
+    setPhase('');
+    setCategory('');
+    setSubCategory('');
+  };
+
+  const handlePhaseChange = (value: string) => {
+    setPhase(value);
+    setCategory('');
+    setSubCategory('');
+    setName('');
+    setDescription('');
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setCategory(value);
+    setSubCategory('');
+    const task = selectedPhase?.tasks.find((t) => t.name === value);
+    if (task && task.subTasks.length === 0) {
+      setName(task.name);
+      setDescription(task.description ?? '');
+    } else {
+      setName('');
+      setDescription('');
+    }
+  };
+
+  const handleSubCategoryChange = (value: string) => {
+    setSubCategory(value);
+    const subTask = selectedTask?.subTasks.find((s) => s.name === value);
+    setName(`${category} - ${value}`);
+    setDescription(subTask?.description ?? '');
   };
 
   const isReady = sop?.status === 'ready';
@@ -74,34 +139,125 @@ export default function SopGenerator() {
         >
           <Typography variant="h4" sx={{ fontWeight: 800, textAlign: 'center' }}>
             Build your SOP from Scratch{' '}
-            <AutoAwesomeIcon sx={{ fontSize: 28, color: 'text.primary', verticalAlign: 'middle' }} />
+            <AutoAwesomeIcon
+              sx={{
+                fontSize: 28,
+                color: 'text.primary',
+                verticalAlign: 'middle',
+                display: 'inline-block',
+                animation: `${twinkle} 2.5s ease-in-out infinite`,
+              }}
+            />
           </Typography>
 
-          <Paper
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragOver(true);
-            }}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDragOver(false);
-              void collectFromDataTransfer(event.dataTransfer).then((picked) =>
-                setFiles((previous) => [...previous, ...picked]),
-              );
-            }}
+          <Box
             sx={{
+              position: 'relative',
               width: '100%',
               maxWidth: 700,
-              p: { xs: 3, sm: 4 },
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 3,
               borderRadius: 4,
-              border: 2,
-              borderColor: isDragOver ? 'info.main' : 'info.light',
+              overflow: 'hidden',
+              p: '2px',
+              boxShadow: isDragOver
+                ? '0 0 24px 4px rgba(11, 132, 227, 0.35)'
+                : '0 0 16px 2px rgba(56, 189, 248, 0.25)',
+              transition: 'box-shadow 0.3s ease',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                inset: '-50%',
+                background:
+                  'conic-gradient(from 0deg, #a5f3fc, #38bdf8, #0b84e3, #38bdf8, #a5f3fc)',
+                opacity: isDragOver ? 0.9 : 0.6,
+                animation: `${rotateGradient} 6s linear infinite`,
+              },
             }}
           >
+            <Paper
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragOver(false);
+                void collectFromDataTransfer(event.dataTransfer).then((picked) =>
+                  setFiles((previous) => [...previous, ...picked]),
+                );
+              }}
+              sx={{
+                position: 'relative',
+                width: '100%',
+                p: { xs: 3, sm: 4 },
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 3,
+                borderRadius: 4,
+                border: 'none',
+              }}
+            >
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              <TextField
+                variant="standard"
+                select
+                value={phase}
+                onChange={(event) => handlePhaseChange(event.target.value)}
+                label="Type"
+                sx={{ minWidth: 140, flex: 1 }}
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+              >
+                <MenuItem value="">
+                  <em>Select</em>
+                </MenuItem>
+                {TASK_TAXONOMY.map((p) => (
+                  <MenuItem key={p.name} value={p.name}>
+                    {p.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                variant="standard"
+                select
+                value={category}
+                onChange={(event) => handleCategoryChange(event.target.value)}
+                label="Category"
+                disabled={!selectedPhase}
+                sx={{ minWidth: 140, flex: 1 }}
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+              >
+                <MenuItem value="">
+                  <em>Select</em>
+                </MenuItem>
+                {selectedPhase?.tasks.map((t) => (
+                  <MenuItem key={t.name} value={t.name}>
+                    {t.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                variant="standard"
+                select
+                value={subCategory}
+                onChange={(event) => handleSubCategoryChange(event.target.value)}
+                label="Sub-Category"
+                disabled={!selectedTask || selectedTask.subTasks.length === 0}
+                sx={{ minWidth: 140, flex: 1 }}
+                slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
+              >
+                <MenuItem value="">
+                  <em>Select</em>
+                </MenuItem>
+                {selectedTask?.subTasks.map((s) => (
+                  <MenuItem key={s.name} value={s.name}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
             <TextField
               variant="standard"
               value={name}
@@ -163,21 +319,82 @@ export default function SopGenerator() {
             )}
 
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
-              <FilePickerButton
-                label="Base File(s)"
-                multiple
-                onFiles={(picked) => setFiles((previous) => [...previous, ...picked])}
-              />
-              <FilePickerButton
-                label="Folder"
-                folder
-                onFiles={(picked) => setFiles((previous) => [...previous, ...picked])}
-              />
-              <FilePickerButton
-                label="Current SOP"
-                variant="tonal"
-                onFiles={(picked) => setCurrentSop(picked[0] ?? null)}
-              />
+              <Box onMouseLeave={closeAddMenu}>
+                <IconButton
+                  aria-label={addMenuAnchor ? 'Close menu' : 'Add files'}
+                  onMouseEnter={(event) => setAddMenuAnchor(event.currentTarget)}
+                  onClick={(event) => setAddMenuAnchor(event.currentTarget)}
+                  sx={{
+                    position: 'relative',
+                    bgcolor: 'action.hover',
+                    color: 'text.primary',
+                    transition: 'transform 0.2s ease',
+                    '&:hover': { transform: 'scale(1.12)', bgcolor: 'action.selected' },
+                  }}
+                >
+                  <AddIcon
+                    sx={{
+                      position: 'absolute',
+                      transition: 'transform 0.2s ease, opacity 0.2s ease',
+                      transform: addMenuAnchor ? 'rotate(45deg)' : 'rotate(0deg)',
+                      opacity: addMenuAnchor ? 0 : 1,
+                    }}
+                  />
+                  <CloseIcon
+                    sx={{
+                      position: 'absolute',
+                      transition: 'transform 0.2s ease, opacity 0.2s ease',
+                      transform: addMenuAnchor ? 'rotate(0deg)' : 'rotate(-45deg)',
+                      opacity: addMenuAnchor ? 1 : 0,
+                    }}
+                  />
+                </IconButton>
+                <Menu
+                  anchorEl={addMenuAnchor}
+                  open={Boolean(addMenuAnchor)}
+                  onClose={closeAddMenu}
+                  disableAutoFocus
+                  disableRestoreFocus
+                  keepMounted
+                  slotProps={{
+                    list: {
+                      onMouseLeave: closeAddMenu,
+                      sx: { p: 1, display: 'flex', flexDirection: 'column', gap: 0.5 },
+                    },
+                  }}
+                >
+                  <FilePickerButton
+                    label="Base File(s)"
+                    multiple
+                    fullWidth
+                    sx={{ justifyContent: 'flex-start' }}
+                    onFiles={(picked) => {
+                      setFiles((previous) => [...previous, ...picked]);
+                      closeAddMenu();
+                    }}
+                  />
+                  <FilePickerButton
+                    label="Folder"
+                    folder
+                    fullWidth
+                    sx={{ justifyContent: 'flex-start' }}
+                    onFiles={(picked) => {
+                      setFiles((previous) => [...previous, ...picked]);
+                      closeAddMenu();
+                    }}
+                  />
+                  <FilePickerButton
+                    label="Current SOP"
+                    variant="tonal"
+                    fullWidth
+                    sx={{ justifyContent: 'flex-start' }}
+                    onFiles={(picked) => {
+                      setCurrentSop(picked[0] ?? null);
+                      closeAddMenu();
+                    }}
+                  />
+                </Menu>
+              </Box>
               <Box sx={{ flexGrow: 1 }} />
               <Button onClick={clearAll} sx={{ color: 'text.secondary', fontWeight: 400 }}>
                 Clear All
@@ -196,7 +413,8 @@ export default function SopGenerator() {
                 Generate SOP
               </Button>
             </Box>
-          </Paper>
+            </Paper>
+          </Box>
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -289,6 +507,15 @@ export default function SopGenerator() {
                   mt: 2,
                 }}
               >
+                {!isFailed && (
+                  <AutoAwesomeIcon
+                    sx={{
+                      fontSize: 28,
+                      color: 'text.primary',
+                      animation: `${twinkle} 2.5s ease-in-out infinite`,
+                    }}
+                  />
+                )}
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>
                   {isFailed ? 'Generation failed' : 'Your SOP is being generated'}
                 </Typography>

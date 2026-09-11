@@ -99,6 +99,7 @@ class _LineWriter:
 class Job:
     id: str
     name: str
+    description: str = ''
     status: JobStatus = 'generating'
     lines: list[str] = field(default_factory=list)
     error: str | None = None
@@ -166,8 +167,8 @@ def _publish(job: Job, event, data) -> None:
         queue.put_nowait((event, data))
 
 
-def create(name: str) -> Job:
-    job = Job(id=uuid.uuid4().hex[:12], name=name)
+def create(name: str, description: str = '') -> Job:
+    job = Job(id=uuid.uuid4().hex[:12], name=name, description=description)
     _jobs[job.id] = job
     (job.dir / 'inputs').mkdir(parents=True, exist_ok=True)
     return job
@@ -217,6 +218,8 @@ async def run(job: Job) -> None:
                     job.dir / 'out',
                     config.SCHEMA_GUIDE_PATH,
                     sop_path=job.draft_path,
+                    sop_name=job.name,
+                    sop_description=job.description,
                 )
             finally:
                 writer.flush()
