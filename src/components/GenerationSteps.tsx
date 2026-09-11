@@ -86,7 +86,7 @@ type GenerationStepsProps = {
 
 export default function GenerationSteps({ steps }: GenerationStepsProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column-reverse', gap: 1.5 }}>
       {steps.map((step) => (
         <StepRow key={step.index} step={step} />
       ))}

@@ -507,6 +507,15 @@ export default function SopGenerator() {
                   mt: 2,
                 }}
               >
+                {!isFailed && (
+                  <AutoAwesomeIcon
+                    sx={{
+                      fontSize: 28,
+                      color: 'text.primary',
+                      animation: `${twinkle} 2.5s ease-in-out infinite`,
+                    }}
+                  />
+                )}
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>
                   {isFailed ? 'Generation failed' : 'Your SOP is being generated'}
                 </Typography>
