@@ -53,6 +53,9 @@ pnpm install
 
 # Install the backend, pipeline, and Python dependencies.
 uv sync --project backend
+
+# Install the backend, pipeline and Python dependencies on Windows with cybersecurity blockers.
+uv venv --project backend --link-mode=symlink C:\venvs\sop-backend
 ```
 
 No `backend/.env` file is required for the default setup. The pipeline uses the
