@@ -1,0 +1,37 @@
+Phase,Task,Sub-Task,Description
+Claim Intake,Claim Received,,"Initial intake of the claim into FINEOS/system, capturing claimant, employer, and plan identifiers, leave reasons, requested dates, and submission channel"
+,Claim Review,Last day worked / Earnings test,Verifying Date Last Worked (DLW) against Date of Disability thresholds (5+ calendar days gap check) and reviewing wage/earnings data against option codes to establish eligible STD payment bases
+,,Recurrency check,Checking for existing certified benefit periods or active claims in FINEOS to prevent duplicate claim processing or handle recurring disability conditions
+,,Coverage verification,"Confirming policy coverage (option code, sub-code, sub-point, effective dates) by querying legacy mainframes (UIS/UDS) via the Coverage Verification eForm"
+,Request for Medical Information,Provider setup & work pattern,Capturing healthcare provider details and recording claimant work patterns (days/hours worked) to evaluate availability and establish medical request parameters
+,,"Wage information (Stat DI, PFML)",Requesting or reviewing statutory disability insurance (Stat DI) and state Paid Family Medical Leave (PFML) wage details for statutory compliance and offset calculations
+,,Salary continuance code check,"Verifying salary continuance codes (e.g., Code 7 = ATP Dates Only) to determine whether partial pay or salary continuation rules apply"
+,,Pre-existing periods,Reviewing pre-existing condition limitations and duration limits on the employer's plan configuration prior to initial decisioning
+,,Medical Reminders,"Sending automated reminders to the claimant or provider for missing actual delivery dates, delivery types, or outstanding medical documentation"
+,Acknowledgement Package Sent,,Automatically generating and sending receipt confirmation / welcome packages to the claimant and manager letters to the employer
+,Assign Claim by Unit Leader,,Routing the claim to a specific Unit Leader (UL) / Case Manager queue for manual or automated processing
+Claim Decisioning,Initial Interview,Complete initial interview,
+,Update Claim,Document initial interview,Formally recording the interview findings in FINEOS by completing the Interview eForm
+,,Add key dates,
+,,Add hospitalization details,
+,Review Documents,Review medical documents,
+,,"Review incoming texts, phone calls",
+,,Review financial documents,
+,Request for Missing Documents from Employer,,
+,Behavioral Claim Evaluation,,Performing specialized clinical evaluation for mental health or substance abuse claims excluded from standard Simplified Claim Process (SCP) pre-approvals
+,Process Claim,Functional capacity & disability determination,"Evaluating physical job demands (Job Strength mapping: sedentary, light, medium, heavy) against ICD-10 medical codes and MD Guidelines recovery limits"
+,,Apply duration & benefit dates,
+,,Situs / Residence state rules,"Evaluating state-specific statutory regulations (e.g., statutory disability / PFL plans in NY, NJ, CA, PR, HI)"
+,,Manage offsets,Identifying and deducting benefit amounts received from other public/private sources to avoid duplicate payments
+,,Premium deductions,Loading and applying customer premium deduction/wage info into database tables for benefit payroll adjustments
+,Adjudicate Claim,Decision communication,"Formally approving or denying the claim, filing the Action Plan and Decision Summary eForms, and issuing decision letters"
+Ongoing Management,Process payments,,
+,Payment letters,,
+,Manage Overpayments >$500,,
+,Manage Overpayments <$500,,
+,Claimant Check Ins and Call Back*,,
+,Adjudicate Extension Requests*,,
+Disability Closure,Return to Work,,
+,Bridge to LTD,,
+,Max Duration Completed,,
+,Appeals Referrals,,
