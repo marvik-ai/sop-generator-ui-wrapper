@@ -19,6 +19,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import GenerationSteps from '../../components/GenerationSteps';
@@ -37,6 +38,17 @@ const rotateGradient = keyframes`
   }
   to {
     transform: rotate(360deg);
+  }
+`;
+
+const twinkle = keyframes`
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2) rotate(15deg);
+    opacity: 0.6;
   }
 `;
 
@@ -88,7 +100,15 @@ export default function SopGenerator() {
         >
           <Typography variant="h4" sx={{ fontWeight: 800, textAlign: 'center' }}>
             Build your SOP from Scratch{' '}
-            <AutoAwesomeIcon sx={{ fontSize: 28, color: 'text.primary', verticalAlign: 'middle' }} />
+            <AutoAwesomeIcon
+              sx={{
+                fontSize: 28,
+                color: 'text.primary',
+                verticalAlign: 'middle',
+                display: 'inline-block',
+                animation: `${twinkle} 2.5s ease-in-out infinite`,
+              }}
+            />
           </Typography>
 
           <Box
@@ -135,6 +155,7 @@ export default function SopGenerator() {
                 flexDirection: 'column',
                 gap: 3,
                 borderRadius: 4,
+                border: 'none',
               }}
             >
             <TextField
@@ -204,13 +225,29 @@ export default function SopGenerator() {
                   onMouseEnter={(event) => setAddMenuAnchor(event.currentTarget)}
                   onClick={(event) => setAddMenuAnchor(event.currentTarget)}
                   sx={{
+                    position: 'relative',
                     bgcolor: 'action.hover',
                     color: 'text.primary',
                     transition: 'transform 0.2s ease',
                     '&:hover': { transform: 'scale(1.12)', bgcolor: 'action.selected' },
                   }}
                 >
-                  <AddIcon />
+                  <AddIcon
+                    sx={{
+                      position: 'absolute',
+                      transition: 'transform 0.2s ease, opacity 0.2s ease',
+                      transform: addMenuAnchor ? 'rotate(45deg)' : 'rotate(0deg)',
+                      opacity: addMenuAnchor ? 0 : 1,
+                    }}
+                  />
+                  <CloseIcon
+                    sx={{
+                      position: 'absolute',
+                      transition: 'transform 0.2s ease, opacity 0.2s ease',
+                      transform: addMenuAnchor ? 'rotate(0deg)' : 'rotate(-45deg)',
+                      opacity: addMenuAnchor ? 1 : 0,
+                    }}
+                  />
                 </IconButton>
                 <Menu
                   anchorEl={addMenuAnchor}
